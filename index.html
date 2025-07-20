@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Piggy Banker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Press Start 2P', cursive;
+            background-image: url('https://i.imgur.com/EcQbN27.jpeg');
+            background-position: center center;
+            background-repeat: no-repeat;
+            background-size: 120% auto; 
+            color: #fff;
+            overflow-x: hidden;
+            animation: pan-background 80s linear infinite;
+        }
+        
+        @keyframes pan-background {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        .pixel-border {
+            border: 4px solid #fff;
+            box-shadow: 0 0 0 4px #000, 0 0 0 8px #fff;
+        }
+        .text-shadow {
+            text-shadow: 3px 3px 0 #000;
+        }
+        .button {
+            background-color: #0077b6;
+            color: #fff;
+            border: 2px solid #fff;
+            box-shadow: 4px 4px 0 #000;
+            transition: all 0.1s ease-in-out;
+            text-shadow: 2px 2px 0 #000;
+        }
+        .button-delete {
+            background-color: #d00000;
+        }
+        .button:hover, .button:focus {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0 #000;
+        }
+        .input-field {
+            background-color: rgba(0, 0, 0, 0.7);
+            border: 2px solid #fff;
+            color: #fff;
+            caret-color: #00a8ff;
+        }
+        .input-field::placeholder {
+            color: #aaa;
+        }
+        .input-field:focus {
+            outline: none;
+            border-color: #00a8ff;
+        }
+        .mascot-animation {
+            animation: bounce 2s infinite;
+        }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        .chat-bubble {
+            background-color: rgba(0, 0, 0, 0.8);
+            border: 2px solid #fff;
+            position: relative;
+        }
+        .chat-bubble::after {
+            content: '';
+            position: absolute;
+            bottom: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 12px solid transparent;
+            border-right: 12px solid transparent;
+            border-top: 12px solid #fff;
+        }
+        .hidden {
+            display: none;
+        }
+        #message-modal {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #ff4757;
+            color: white;
+            padding: 1rem 2rem;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.5s, top 0.5s;
+            text-shadow: 2px 2px 0 #000;
+        }
+        #savings-log-container, #goal-list-container {
+            max-height: 250px;
+            overflow-y: auto;
+            border: 2px solid #fff;
+            background: rgba(0,0,0,0.5);
+        }
+        .log-entry, .goal-item {
+            border-bottom: 2px dashed #555;
+        }
+        .log-entry:last-child, .goal-item:last-child {
+            border-bottom: none;
+        }
+        .goal-item:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            cursor: pointer;
+        }
+        #money-animation-container {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 9999; overflow: hidden;
+        }
+        .money-particle {
+            position: absolute; top: -50px; font-size: 24px; color: #FFD700; animation: fall linear; text-shadow: 2px 2px 0 #000;
+        }
+        @keyframes fall {
+            to { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+
+    <div id="message-modal" class="pixel-border"></div>
+    <div id="money-animation-container"></div>
+
+    <div id="app-container" class="w-full max-w-3xl mx-auto p-6 md:p-8 pixel-border bg-black bg-opacity-60">
+        
+        <header class="text-center mb-8">
+            <h1 id="main-title" class="text-3xl md:text-5xl text-shadow" style="color: #FFD700;">Piggy Banker</h1>
+        </header>
+
+        <main id="main-content">
+            <div id="mascot-container" class="flex justify-center mb-6">
+                <div class="mascot-animation">
+                    <!-- UPDATED: Mascot image changed to the new one -->
+                    <img src="https://i.imgur.com/HBke9kb.png" alt="Piggy Mascot" class="w-40 h-40 object-contain">
+                </div>
+            </div>
+
+            <div id="interaction-area" class="space-y-6">
+                
+                <div id="step0" class="hidden text-center space-y-4">
+                    <h2 class="text-2xl text-white text-shadow">Your Goals</h2>
+                    <div id="goal-list-container" class="p-2">
+                        <div id="goal-list" class="space-y-2"></div>
+                    </div>
+                    <button id="add-new-goal-btn" class="button px-6 py-3">Add a New Goal</button>
+                </div>
+
+                <div id="step1" class="hidden text-center space-y-4">
+                    <div class="chat-bubble p-4"><p>Hi, I'm Piggy! I'm here to help you save. What's your name?</p></div>
+                    <input id="name-input" type="text" class="input-field w-full max-w-xs mx-auto p-2 text-center" placeholder="Type your name..."><button id="submit-name-btn" class="button px-6 py-2">Next</button>
+                </div>
+
+                <div id="step2" class="hidden text-center space-y-4">
+                    <div class="chat-bubble p-4"><p id="goal-prompt">Alright, [Name], what is your saving goal?</p></div>
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        <button class="goal-option button p-4" data-goal="Dream Trip">Dream Trip</button>
+                        <button class="goal-option button p-4" data-goal="Laptop/Tech">Laptop/Tech</button>
+                        <button class="goal-option button p-4" data-goal="Car">Car</button>
+                        <button class="goal-option button p-4" data-goal="Clothes">Clothes</button>
+                        <button class="goal-option button p-4" data-goal="A Gift">A Gift</button>
+                        <button id="other-goal-btn" class="button p-4">Other</button>
+                    </div>
+                    <div id="other-goal-input-container" class="hidden mt-4">
+                        <input id="other-goal-input" type="text" class="input-field w-full max-w-xs mx-auto p-2 text-center" placeholder="What is it?"><button id="submit-other-goal-btn" class="button px-6 py-2 mt-2">Set Goal</button>
+                    </div>
+                </div>
+
+                <div id="step3" class="hidden text-center space-y-4">
+                    <div class="chat-bubble p-4"><p id="amount-prompt">A [Goal]! Nice! How much does it cost?</p></div>
+                    <input id="amount-input" type="number" class="input-field w-full max-w-xs mx-auto p-2 text-center" placeholder="$0.00">
+                     <div class="mt-2"><p class="text-sm mb-2">Got a picture of it?</p><input id="image-upload" type="file" class="text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100"></div>
+                    <button id="submit-amount-btn" class="button px-6 py-2">Next</button>
+                </div>
+
+                <div id="step4" class="hidden text-center space-y-4">
+                     <div class="chat-bubble p-4"><p id="timeline-prompt">And when do you want it by?</p></div>
+                    <input id="date-input" type="date" class="input-field w-full max-w-xs mx-auto p-2 text-center"><button id="calculate-btn" class="button px-6 py-2">Create Goal!</button>
+                </div>
+                
+                <div id="step5" class="hidden text-center space-y-6">
+                    <div class="bg-black bg-opacity-70 p-6 pixel-border space-y-6">
+                        <div class="text-center">
+                            <p class="text-lg text-gray-400">YOUR GOAL</p>
+                            <h2 class="text-2xl text-white text-shadow" id="goal-summary">A Car</h2>
+                            <div id="goal-image-display" class="mt-4 flex justify-center"></div>
+                        </div>
+
+                        <div class="text-center">
+                            <p class="text-lg text-gray-400">AMOUNT LEFT TO SAVE</p>
+                            <p class="text-5xl text-[#FFD700] text-shadow my-2" id="amount-left">$20,000.00</p>
+                            <p class="text-base text-gray-300">
+                                Target: <span id="final-amount" class="text-white">$20,000.00</span> by <span id="final-date" class="text-white">12/31/2025</span>
+                            </p>
+                        </div>
+                        
+                        <div>
+                            <div class="w-full bg-gray-900 pixel-border h-8">
+                                <div id="progress-bar" class="bg-[#4ade80] h-full text-center text-black font-bold flex items-center justify-center transition-all duration-500" style="width: 0%;">0%</div>
+                            </div>
+                             <p class="text-center mt-2 text-lg">Weekly Target: <span class="text-[#FFD700]" id="weekly-amount">$400/week</span></p>
+                        </div>
+
+                         <div class="pt-2 space-y-4">
+                            <div class="flex flex-col md:flex-row justify-center items-center gap-2">
+                                <input id="transaction-amount-input" type="number" class="input-field w-full md:w-1/3 p-2 text-center" placeholder="Amount...">
+                                <input id="transaction-desc-input" type="text" class="input-field w-full md:w-2/3 p-2 text-center" placeholder="Description (e.g., Paycheck)">
+                            </div>
+                            <div class="flex justify-center gap-4 pt-2">
+                                <button id="add-savings-btn" class="button px-4 py-2 flex-1">Log Savings</button>
+                                <button id="subtract-savings-btn" class="button button-delete px-4 py-2 flex-1">Subtract</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="savings-log-container" class="mt-4 p-2 text-left hidden">
+                        <h3 class="text-lg text-center text-shadow text-white mb-2">Transaction Log</h3>
+                        <div id="savings-log-list" class="space-y-2"></div>
+                    </div>
+                    <div class="flex gap-4">
+                        <button id="back-to-goals-btn" class="button px-6 py-2 flex-1">Back to Goals</button>
+                        <button id="delete-goal-btn" class="button button-delete px-6 py-2">Delete Goal</button>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const steps = {
+                step0: document.getElementById('step0'),
+                step1: document.getElementById('step1'),
+                step2: document.getElementById('step2'),
+                step3: document.getElementById('step3'),
+                step4: document.getElementById('step4'),
+                step5: document.getElementById('step5'),
+            };
+            const mainTitle = document.getElementById('main-title');
+            const messageModal = document.getElementById('message-modal');
+            const moneyAnimationContainer = document.getElementById('money-animation-container');
+            const mascotContainer = document.getElementById('mascot-container');
+            
+            let appData = {
+                userName: null,
+                goals: []
+            };
+            let currentGoalId = null;
+            let tempGoal = {};
+            const DATA_STORAGE_KEY = 'piggyBankerData';
+
+            const showMessage = (message) => {
+                messageModal.textContent = message;
+                messageModal.style.opacity = '1';
+                messageModal.style.top = '40px';
+                setTimeout(() => {
+                    messageModal.style.opacity = '0';
+                    messageModal.style.top = '20px';
+                }, 3000);
+            };
+            
+            const saveData = () => {
+                localStorage.setItem(DATA_STORAGE_KEY, JSON.stringify(appData));
+            };
+
+            const showStep = (stepName) => {
+                Object.values(steps).forEach(step => step.classList.add('hidden'));
+                if (steps[stepName]) {
+                    steps[stepName].classList.remove('hidden');
+                }
+                
+                if (stepName === 'step5') {
+                    mascotContainer.classList.add('hidden');
+                    mainTitle.textContent = 'The Plan!';
+                } else {
+                    mascotContainer.classList.remove('hidden');
+                    mainTitle.textContent = 'Piggy Banker';
+                }
+            };
+
+            const updateProgress = (goal) => {
+                const progressBar = document.getElementById('progress-bar');
+                if (!goal || !goal.amount || goal.amount === 0) {
+                    progressBar.style.width = '0%';
+                    progressBar.textContent = '0%';
+                    return;
+                }
+                let percentage = (goal.savedAmount / goal.amount) * 100;
+                percentage = Math.max(0, Math.min(100, percentage));
+                progressBar.style.width = `${percentage}%`;
+                progressBar.textContent = `${Math.round(percentage)}%`;
+            };
+
+            const triggerMoneyAnimation = () => {
+                for (let i = 0; i < 20; i++) {
+                    const p = document.createElement('div');
+                    p.className = 'money-particle'; p.textContent = '$';
+                    p.style.left = `${Math.random()*100}vw`;
+                    p.style.animationDuration = `${Math.random()*2+3}s`;
+                    p.style.animationDelay = `${Math.random()*0.5}s`;
+                    moneyAnimationContainer.appendChild(p);
+                    setTimeout(() => p.remove(), 5000);
+                }
+            };
+
+            const displayLog = (goal) => {
+                const logContainer = document.getElementById('savings-log-container');
+                const logList = document.getElementById('savings-log-list');
+                logList.innerHTML = '';
+                if (goal.log && goal.log.length > 0) {
+                    logContainer.classList.remove('hidden');
+                    goal.log.slice().reverse().forEach(entry => {
+                        const div = document.createElement('div');
+                        div.className = 'log-entry p-2 text-sm';
+                        const color = entry.type === 'withdrawal' ? 'text-[#ff4757]' : 'text-[#4ade80]';
+                        const sign = entry.type === 'withdrawal' ? '-' : '+';
+                        div.innerHTML = `<span class="text-[#FFD700]">[${entry.date}]</span> <span class="${color}">${sign}$${entry.amount.toFixed(2)}</span>: <span class="text-white">${entry.description}</span>`;
+                        logList.appendChild(div);
+                    });
+                } else {
+                    logContainer.classList.add('hidden');
+                }
+            };
+
+            const displayResults = () => {
+                const goal = appData.goals.find(g => g.id === currentGoalId);
+                if (!goal) return displayDashboard();
+
+                document.getElementById('goal-summary').textContent = `${goal.goal}`;
+                document.getElementById('final-amount').textContent = `$${goal.amount.toFixed(2)}`;
+                document.getElementById('final-date').textContent = new Date(goal.targetDate).toLocaleDateString();
+
+                const imageDisplay = document.getElementById('goal-image-display');
+                imageDisplay.innerHTML = goal.image ? `<img src="${goal.image}" alt="${goal.goal}" class="max-h-48 mx-auto pixel-border mb-4">` : '';
+
+                const amountLeft = goal.amount - goal.savedAmount;
+                document.getElementById('amount-left').textContent = `$${Math.max(0, amountLeft).toFixed(2)}`;
+
+                const targetDate = new Date(goal.targetDate);
+                const today = new Date();
+                const diffWeeks = Math.ceil((targetDate - today) / (1000 * 60 * 60 * 24 * 7));
+                
+                document.getElementById('weekly-amount').textContent = (diffWeeks > 0) ? `$${Math.max(0, amountLeft / diffWeeks).toFixed(2)}/week` : 'Date has passed!';
+                
+                updateProgress(goal);
+                displayLog(goal);
+                showStep('step5');
+            };
+
+            const displayDashboard = () => {
+                const goalList = document.getElementById('goal-list');
+                goalList.innerHTML = '';
+                if(appData.goals.length === 0) {
+                    goalList.innerHTML = `<p class="text-gray-400 p-4">No goals yet. Add one to get started!</p>`;
+                } else {
+                    appData.goals.forEach(goal => {
+                        const item = document.createElement('div');
+                        item.className = 'goal-item p-4 text-left';
+                        item.dataset.id = goal.id;
+                        const percentage = goal.amount > 0 ? Math.round(Math.max(0, Math.min(100, (goal.savedAmount / goal.amount) * 100))) : 0;
+                        item.innerHTML = `
+                            <div class="flex justify-between items-center">
+                                <span class="text-lg">${goal.goal}</span>
+                                <span class="text-sm">$${goal.savedAmount.toFixed(2)} / $${goal.amount.toFixed(2)}</span>
+                            </div>
+                            <div class="w-full bg-gray-900 pixel-border h-4 mt-2">
+                                <div class="bg-[#4ade80] h-full" style="width: ${percentage}%;"></div>
+                            </div>
+                        `;
+                        item.addEventListener('click', () => {
+                            currentGoalId = goal.id;
+                            displayResults();
+                        });
+                        goalList.appendChild(item);
+                    });
+                }
+                showStep('step0');
+            };
+
+            const resetCreationForm = () => {
+                tempGoal = {};
+                document.querySelectorAll('#step2 input, #step3 input, #step4 input').forEach(input => input.value = '');
+                document.getElementById('image-upload').value = '';
+                document.getElementById('other-goal-input-container').classList.add('hidden');
+            };
+            
+            // --- Event Listeners ---
+            document.getElementById('add-new-goal-btn').addEventListener('click', () => {
+                resetCreationForm();
+                document.getElementById('goal-prompt').textContent = `Alright, ${appData.userName}, what is your saving goal?`;
+                showStep('step2');
+            });
+            
+            document.getElementById('submit-name-btn').addEventListener('click', () => {
+                const nameInput = document.getElementById('name-input');
+                if (nameInput.value.trim() === '') return showMessage('Please enter your name!');
+                appData.userName = nameInput.value.trim();
+                saveData();
+                document.getElementById('goal-prompt').textContent = `Alright, ${appData.userName}, what is your saving goal?`;
+                showStep('step2');
+            });
+
+            document.querySelectorAll('.goal-option').forEach(button => button.addEventListener('click', (e) => {
+                tempGoal.goal = e.target.dataset.goal;
+                document.getElementById('amount-prompt').textContent = `A ${tempGoal.goal}! Nice! How much does it cost?`;
+                showStep('step3');
+            }));
+            
+            document.getElementById('other-goal-btn').addEventListener('click', () => document.getElementById('other-goal-input-container').classList.remove('hidden'));
+            
+            document.getElementById('submit-other-goal-btn').addEventListener('click', () => {
+                const otherGoalInput = document.getElementById('other-goal-input');
+                if (otherGoalInput.value.trim() !== '') {
+                    tempGoal.goal = otherGoalInput.value.trim();
+                    document.getElementById('amount-prompt').textContent = `A ${tempGoal.goal}! Nice! How much does it cost?`;
+                    showStep('step3');
+                }
+            });
+
+            document.getElementById('submit-amount-btn').addEventListener('click', () => {
+                const amountInput = document.getElementById('amount-input');
+                const imageUpload = document.getElementById('image-upload');
+                const amount = parseFloat(amountInput.value);
+                if (isNaN(amount) || amount <= 0) return showMessage('Please enter a valid amount.');
+                tempGoal.amount = amount;
+                if (imageUpload.files && imageUpload.files[0]) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => { tempGoal.image = e.target.result; showStep('step4'); };
+                    reader.readAsDataURL(imageUpload.files[0]);
+                } else {
+                    tempGoal.image = null;
+                    showStep('step4');
+                }
+            });
+
+            document.getElementById('calculate-btn').addEventListener('click', () => {
+                const dateInput = document.getElementById('date-input');
+                if (dateInput.value === '') return showMessage('Please select a date.');
+                const targetDate = new Date(dateInput.value);
+                const today = new Date();
+                today.setHours(0,0,0,0);
+                if (targetDate <= today) return showMessage('Please select a future date.');
+                
+                const newGoal = {
+                    ...tempGoal,
+                    id: Date.now(),
+                    targetDate: dateInput.value,
+                    savedAmount: 0,
+                    log: []
+                };
+                appData.goals.push(newGoal);
+                saveData();
+                currentGoalId = newGoal.id;
+                displayResults();
+            });
+
+            const handleTransaction = (type) => {
+                const amountInput = document.getElementById('transaction-amount-input');
+                const descInput = document.getElementById('transaction-desc-input');
+                const amount = parseFloat(amountInput.value);
+                const description = descInput.value.trim();
+                if (isNaN(amount) || amount <= 0) return showMessage('Please enter a valid amount!');
+                if (description === '') return showMessage('Please add a description!');
+
+                const goalIndex = appData.goals.findIndex(g => g.id === currentGoalId);
+                if (goalIndex === -1) return;
+
+                if (type === 'deposit') {
+                    appData.goals[goalIndex].savedAmount += amount;
+                    triggerMoneyAnimation();
+                } else {
+                    appData.goals[goalIndex].savedAmount -= amount;
+                }
+
+                appData.goals[goalIndex].log.push({ amount, description, date: new Date().toLocaleDateString(), type: type });
+                saveData();
+                displayResults();
+                amountInput.value = '';
+                descInput.value = '';
+            };
+
+            document.getElementById('add-savings-btn').addEventListener('click', () => handleTransaction('deposit'));
+            document.getElementById('subtract-savings-btn').addEventListener('click', () => handleTransaction('withdrawal'));
+            
+            document.getElementById('back-to-goals-btn').addEventListener('click', displayDashboard);
+
+            document.getElementById('delete-goal-btn').addEventListener('click', () => {
+                appData.goals = appData.goals.filter(g => g.id !== currentGoalId);
+                saveData();
+                displayDashboard();
+            });
+
+            const init = () => {
+                const savedData = localStorage.getItem(DATA_STORAGE_KEY);
+                if (savedData) {
+                    appData = JSON.parse(savedData);
+                }
+                
+                if (appData.userName) {
+                    displayDashboard();
+                } else {
+                    showStep('step1');
+                }
+            };
+
+            init();
+        });
+    </script>
+</body>
+</html>
